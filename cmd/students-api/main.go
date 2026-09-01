@@ -12,15 +12,22 @@ import (
 
 	"github.com/R-Shehryar/students-api/internal/config"
 	student "github.com/R-Shehryar/students-api/internal/http/handlers/students"
+	"github.com/R-Shehryar/students-api/internal/storage/sqlite"
 )
 
 func main() {
 	// Load configuration
 	cfg := config.MustLoadConfig()
 	// database setup
+	storage, er := sqlite.New(cfg)
+	if er != nil {
+		log.Fatal("Failed to initialize storage:", er)
+	}
+	slog.Info("Database initialized successfully.", slog.String("env", cfg.Env), slog.String("version", "1.0.0"))
+
 	// setup router
 	router := http.NewServeMux()
-	router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New(storage))
 	// setup server
 	server := &http.Server{
 		Addr:    cfg.HttpServer.Address,
