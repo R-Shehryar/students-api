@@ -4,7 +4,10 @@ import (
 	"database/sql"
 
 	"github.com/R-Shehryar/students-api/internal/config"
+	"github.com/R-Shehryar/students-api/internal/types"
 	_ "modernc.org/sqlite"
+
+	"fmt"
 )
 
 type SQLite struct {
@@ -43,3 +46,23 @@ func (s *SQLite) CreateStudent(name string, email string, age int) (int64, error
     }
     return lastId, nil
 }
+
+func (s *SQLite) GetStudentByID(id int64) (types.Student, error) {
+	
+	stmt, err := s.Db.Prepare("SELECT * FROM students WHERE id = ?")
+	if err != nil {
+        return types.Student{}, err
+    }
+    defer stmt.Close()
+	 var student types.Student
+     err = stmt.QueryRow(id).Scan(&student.ID, &student.Name, &student.Email, &student.Age)
+    
+    if err != nil {
+		if err == sql.ErrNoRows {
+			return types.Student{}, fmt.Errorf("student with ID %d not found", id)
+		}
+        return types.Student{}, fmt.Errorf("failed to get student by ID: %v", err)
+    }
+    return student, nil
+}
+   
