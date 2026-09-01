@@ -78,3 +78,59 @@ func GetAllStudents(storage storage.Storage) http.HandlerFunc {
 		response.WriteJSON(w, http.StatusOK, students)
 	}
 }
+
+func  UpdateStudentByID(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var student types.Student
+		id := r.PathValue("id")
+		intId,err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			response.WriteJSON(w, http.StatusBadRequest, response.GenreralErrorResponse(fmt.Errorf("invalid student ID")))
+			return
+		}
+		err = json.NewDecoder(r.Body).Decode(&student)
+		if errors.Is(err, io.EOF) {
+			response.WriteJSON(w, http.StatusBadRequest, response.GenreralErrorResponse(fmt.Errorf("empty body")))
+			return
+		}
+		if err != nil {
+			response.WriteJSON(w, http.StatusBadRequest, response.GenreralErrorResponse(err))
+			return
+		}
+		validationErr := validator.New().Struct(student)
+
+		if validationErr != nil {
+			validationErrs := validationErr.(validator.ValidationErrors)
+			response.WriteJSON(w, http.StatusBadRequest, response.ValidationErrorResponse(validationErrs))
+			return
+		}
+		updatedStudent, storageErr := storage.UpdateStudentByID(intId, student.Name, student.Email, student.Age)
+		if storageErr != nil {
+			response.WriteJSON(w, http.StatusInternalServerError, response.GenreralErrorResponse(storageErr))
+			return
+		}
+		response.WriteJSON(w, http.StatusOK, updatedStudent)
+
+	}
+
+}
+
+func  DeleteStudentByID(storage storage.Storage) http.HandlerFunc {
+   	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		intId,err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			response.WriteJSON(w, http.StatusBadRequest, response.GenreralErrorResponse(fmt.Errorf("invalid student ID")))
+			return
+		}
+		slog.Info("Fetching student by ID.", slog.String("id", id))
+		err = storage.DeleteStudentByID(intId)
+		
+		if err != nil {
+			response.WriteJSON(w, http.StatusInternalServerError, response.GenreralErrorResponse(err))
+			return
+		}
+		response.WriteJSON(w, http.StatusOK, map[string]interface{}{"message": "Student deleted successfully"})
+	}
+
+}
